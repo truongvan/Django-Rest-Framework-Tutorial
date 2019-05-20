@@ -1,10 +1,17 @@
 from django.http import Http404
+from django.contrib.auth.models import User
 from rest_framework import status
-from rest_framework.generics import (ListCreateAPIView,
-                                     RetrieveUpdateDestroyAPIView)
+from rest_framework import permissions
+from rest_framework.generics import (
+    ListAPIView,
+    ListCreateAPIView,
+    RetrieveAPIView,
+    RetrieveUpdateDestroyAPIView
+)
 
+from .permissions import IsOwnerOrReadOnly
 from .models import Snippet
-from .serializers import SnippetSerializer
+from .serializers import SnippetSerializer, UserSerializer
 
 
 class SnippetList(ListCreateAPIView):
@@ -13,6 +20,12 @@ class SnippetList(ListCreateAPIView):
     """
     queryset = Snippet.objects.all()
     serializer_class = SnippetSerializer
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly, )
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+        
+
 
 
 class SnippetDetail(RetrieveUpdateDestroyAPIView):
@@ -21,3 +34,14 @@ class SnippetDetail(RetrieveUpdateDestroyAPIView):
     """
     queryset = Snippet.objects.all()
     serializer_class = SnippetSerializer
+    permission_classes = (IsOwnerOrReadOnly, )
+
+
+class UserList(ListAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+
+class UserDetail(RetrieveAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer

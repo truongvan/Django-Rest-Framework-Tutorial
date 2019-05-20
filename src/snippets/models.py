@@ -1,7 +1,9 @@
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
-from pygments.lexers import get_all_lexers
+from pygments.lexers import get_all_lexers, get_lexer_by_name
 from pygments.styles import get_all_styles
+from pygments.formatters.html import HtmlFormatter
+from pygments import highlight
 
 LEXERS = [item for item in get_all_lexers() if item[1]]
 LANGUAGES_CHOICES = sorted([(item[1][0], item[0]) for item in LEXERS])
@@ -15,6 +17,25 @@ class Snippet(models.Model):
     linenos = models.BooleanField(_("Linenos"), default=False)
     language = models.CharField(_("Language"), max_length=100, choices=LANGUAGES_CHOICES, default='python')
     style = models.CharField(_("Style"), max_length=100, choices=STYLE_CHOICES, default='friendly')
+    owner = models.ForeignKey('auth.User',
+        on_delete=models.CASCADE,
+        related_name='snippets',
+        verbose_name=_("Owner")
+    )
+    highlighted = models.TextField(_("Highlighted"))
 
     class Meta:
         ordering = ("created", )
+
+    def save(self, *args, **kwargs):
+        lexer = get_lexer_by_name(self.language)
+        linenos = 'table' if self.linenos else False
+        options = {'title': self.tile} if self.title else {}
+        formatter = HtmlFormatter(
+            style=self.style,
+            linenos=linenos,
+            full=True,
+            **options
+        )
+        self.highlighted = highlight(self.code, lexer, formatter)
+        super().save(*args, **kwargs)
